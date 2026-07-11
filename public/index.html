@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lista De Pods – Pedidos</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A8%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn hidden" id="menuBtn" aria-label="Menu">☰</button>
+    <span class="live" id="live"><span class="dot"></span> Lista Atualizada Em Tempo Real</span>
+    <button class="cart-top" id="cartTopBtn" aria-label="Ver pedido">🛒<span class="badge hidden" id="cartTopCount"></span></button>
+  </header>
+
+  <div id="menuBackdrop" class="menu-backdrop hidden">
+    <nav class="side-menu">
+      <div class="side-brand"><span>💨</span> Lista de Pods</div>
+      <p class="side-user">Conectado como<br /><strong id="menuUserName"></strong></p>
+      <button class="menu-item" id="menuMyOrders"><span>🧾</span> Meus pedidos</button>
+      <button class="menu-item" id="menuLogout"><span>↩</span> Sair</button>
+    </nav>
+  </div>
+
+  <div id="authView" class="login-box hidden">
+    <div id="loginForm">
+      <h2>Entrar</h2>
+      <label for="loginUser">Usuário</label>
+      <input type="text" id="loginUser" autocomplete="username" placeholder="seu usuário" />
+      <label for="loginPass">Senha</label>
+      <input type="password" id="loginPass" autocomplete="current-password" placeholder="sua senha" />
+      <button class="btn-primary" id="loginSubmitBtn">Entrar</button>
+      <p class="login-error" id="loginError"></p>
+      <a href="#" id="forgotPassLink" style="display:block;text-align:center;margin-top:10px;font-size:.88rem;color:var(--accent)">Esqueci minha senha</a>
+      <button class="btn-small hidden" id="showRegisterBtn" style="width:100%;margin-top:10px">Criar conta</button>
+      <p class="price-note hidden" id="noRegisterHint" style="margin-top:10px;text-align:center">
+        Para criar uma conta, use o <strong>link do seu vendedor</strong>.
+      </p>
+    </div>
+    <div id="registerForm" class="hidden">
+      <h2>Criar conta</h2>
+      <p class="price-note hidden" id="regVendor" style="margin-bottom:12px"></p>
+      <label for="regName">Nome / Apelido *</label>
+      <input type="text" id="regName" placeholder="Ex: Carlos da Distribuidora" />
+      <label for="regPhone">WhatsApp *</label>
+      <div class="phone-row">
+        <select id="regCountry" aria-label="País">
+          <option value="55">🇧🇷 Brasil +55</option>
+          <option value="595">🇵🇾 Paraguai +595</option>
+          <option value="54">🇦🇷 Argentina +54</option>
+          <option value="598">🇺🇾 Uruguai +598</option>
+          <option value="591">🇧🇴 Bolívia +591</option>
+          <option value="56">🇨🇱 Chile +56</option>
+          <option value="0">🌎 Outro país…</option>
+        </select>
+        <input type="tel" id="regPhone" placeholder="DDD + número" autocomplete="tel" inputmode="numeric" />
+      </div>
+      <input type="tel" id="regCountryCustom" class="hidden" placeholder="Código do país (ex: 351)" inputmode="numeric" style="margin-top:8px" />
+      <p class="field-status hidden" id="regPhoneStatus"></p>
+      <label for="regUser">Usuário *</label>
+      <input type="text" id="regUser" placeholder="ex: carlos10" autocomplete="username" />
+      <label for="regPass">Senha *</label>
+      <input type="password" id="regPass" placeholder="mínimo 4 caracteres" autocomplete="new-password" />
+      <button class="btn-primary" id="registerSubmitBtn">Enviar cadastro</button>
+      <p class="login-error" id="registerError"></p>
+      <button class="btn-small" id="showLoginBtn" style="width:100%;margin-top:10px">Já tenho conta</button>
+    </div>
+    <div id="registerDone" class="hidden">
+      <h2>Cadastro enviado!</h2>
+      <p style="color:var(--muted);font-size:0.92rem;margin-bottom:14px">
+        Seu cadastro será aprovado em até <strong>2 horas</strong>.
+        Assim que aprovado, é só entrar com seu usuário e senha para ver a lista com os seus preços.
+      </p>
+      <button class="btn-primary" id="backToLoginBtn">Voltar para o login</button>
+    </div>
+  </div>
+
+  <main id="storeMain" class="hidden">
+    <section id="myOrdersSection" class="hidden">
+      <h2>Último pedido</h2>
+      <div id="myOrdersList"></div>
+      <a href="#" id="viewAllOrders" class="view-all hidden">Ver todos os pedidos →</a>
+    </section>
+
+    <section>
+      <h2>Pronta entrega</h2>
+      <p class="price-note">
+        💬 Os preços abaixo já são os seus valores combinados.<br />
+        Pedido aprovado em até <strong>2 horas</strong> pelo WhatsApp.
+      </p>
+      <input type="text" id="searchBox" placeholder="🔍 Buscar em todos os sabores..." style="margin-bottom:10px" />
+      <div class="step-label" id="stepBrandLabel">🏷 Filtrar por marca</div>
+      <div id="brandChips" class="chips-row"></div>
+      <div class="step-label hidden" id="stepModelLabel">📦 Filtrar por modelo</div>
+      <div id="modelChips" class="chips-row hidden"></div>
+      <div id="productGrid"></div>
+      <p id="emptyProducts" class="empty hidden">Nenhum produto disponível no momento.</p>
+    </section>
+  </main>
+
+  <footer id="cartBar" class="cart-bar hidden">
+    <div class="info">
+      <span id="cartSummary"></span>
+      <small>Envie e aguarde a aprovação</small>
+    </div>
+    <button class="btn-primary" id="openCartBtn">Ver pedido</button>
+  </footer>
+
+  <div id="cartModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Seu pedido</h3>
+      <div id="cartItems"></div>
+      <div class="total-row"><span>Total de peças</span><span id="modalUnits"></span></div>
+      <div class="total-row" style="padding-top:0"><span>Total</span><span id="modalTotal"></span></div>
+      <label for="custAddress">Endereço completo *</label>
+      <input type="text" id="custAddress" placeholder="Ex: Rua XV de Novembro, 1000 – Apto 12, Centro, Curitiba" autocomplete="street-address" />
+      <button class="btn-primary" id="submitOrderBtn" style="margin-top:16px">Enviar pedido</button>
+      <button class="btn-small" id="closeCartBtn" style="width:100%;margin-top:10px">Continuar escolhendo</button>
+    </div>
+  </div>
+
+  <div id="reviewBackdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Confira seu pedido</h3>
+      <div id="reviewContent"></div>
+      <button class="btn-primary" id="confirmOrderBtn" style="margin-top:16px">✔ Tudo certo, enviar</button>
+      <button class="btn-small" id="backToCartBtn" style="width:100%;margin-top:10px">Corrigir dados</button>
+    </div>
+  </div>
+
+  <div id="successOverlay" class="success-overlay hidden">
+    <div class="success-box">
+      <div class="success-check">✓</div>
+      <h3>Pedido enviado!</h3>
+      <p id="successMsg"></p>
+      <button class="btn-primary" id="successCloseBtn">Fechar</button>
+    </div>
+  </div>
+
+  <div id="myOrdersModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Meus pedidos</h3>
+      <div id="myOrdersFullList"></div>
+      <button class="btn-small" id="closeMyOrdersBtn" style="width:100%;margin-top:14px">Fechar</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="/client.js"></script>
+</body>
+</html>

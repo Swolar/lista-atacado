@@ -1,0 +1,19 @@
+{
+  "name": "lista-atacado",
+  "version": "1.0.0",
+  "description": "Lista De Pods — pedidos no atacado com estoque em tempo real, login de clientes e preços por cliente (Vercel + Supabase)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node scripts/migrate.js",
+    "import": "node scripts/import-data.js",
+    "test": "bash tests/run-all.sh"
+  },
+  "dependencies": {
+    "pg": "^8.16.0"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "private": true
+}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --test tests/parser.test.js)",
+      "Bash(sed -i '' \"s|const PROJECT = '/Users/tarikhamdar/Desktop/pod-atacado';|const PROJECT = require\\('path'\\).resolve\\(__dirname, '..'\\);|\" helpers.js)",
+      "Bash(sed -i '' \"s|require\\('/Users/tarikhamdar/Desktop/pod-atacado/public/parser.js'\\)|require\\('../public/parser.js'\\)|\" parser.test.js)"
+    ]
+  }
+}

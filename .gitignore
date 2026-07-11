@@ -1,0 +1,9 @@
+node_modules/
+.vercel
+.env
+.env.local
+# dados legados do modo arquivo — ficam só na máquina (têm hash de senha e WhatsApp)
+data.json
+data.json.bak-*
+data.json.corrupt-*
+.DS_Store

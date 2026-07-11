@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Admin – Lista De Pods</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A8%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn hidden" id="adminMenuBtn" aria-label="Menu">☰<span class="badge hidden" id="menuAlertBadge"></span></button>
+    <h1>Painel <span id="adminPartner"></span></h1>
+    <span class="live" id="live"><span class="dot"></span> tempo real</span>
+  </header>
+
+  <div id="adminMenuBackdrop" class="menu-backdrop hidden">
+    <nav class="side-menu">
+      <div class="side-brand"><span>💨</span> Painel</div>
+      <p class="side-user">Sócio<br /><strong id="menuPartnerName"></strong></p>
+      <button class="menu-item" data-nav="dashboard"><span>🏠</span> Início</button>
+      <button class="menu-item" data-nav="pedidos"><span>🧾</span> Pedidos <span class="badge hidden" id="pendingBadge" style="margin-left:auto"></span></button>
+      <button class="menu-item" data-nav="clientes"><span>👥</span> Clientes <span class="badge hidden" id="usersBadge" style="margin-left:auto"></span></button>
+      <button class="menu-item" data-nav="leads"><span>🌱</span> Leads</button>
+      <button class="menu-item" data-nav="estoque"><span>📦</span> Estoque</button>
+      <button class="menu-item" data-nav="contabilidade"><span>💰</span> Contabilidade <span class="badge hidden" id="financeBadge" style="margin-left:auto"></span></button>
+      <button class="menu-item" id="logoutBtn"><span>↩</span> Sair</button>
+    </nav>
+  </div>
+
+  <div id="loginView" class="login-box hidden">
+    <h2>Entrar no painel</h2>
+    <label for="adminUser">Usuário</label>
+    <input type="text" id="adminUser" placeholder="seu usuário" autocomplete="username" />
+    <label for="password">Senha</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+    <button class="btn-primary" id="loginBtn">Entrar</button>
+    <p class="login-error" id="loginError"></p>
+  </div>
+
+  <main id="panelView" class="hidden">
+    <section id="tab-dashboard">
+      <div id="dashboardBody"></div>
+    </section>
+
+    <section id="tab-pedidos" class="hidden">
+      <h2>Aguardando aprovação</h2>
+      <div id="pendingOrders"></div>
+      <p id="emptyPending" class="empty hidden">Nenhum pedido pendente.</p>
+
+      <h2>Aceitos — lançar faturamento e custo</h2>
+      <div id="financeOrders"></div>
+      <p id="emptyFinance" class="empty hidden">Nenhum pedido aguardando lançamento.</p>
+
+      <h2>Histórico</h2>
+      <div id="orderHistory"></div>
+      <p id="emptyHistory" class="empty hidden">Nenhum pedido finalizado ainda.</p>
+    </section>
+
+    <section id="tab-clientes" class="hidden">
+      <h2>Modelos de produto (tabela de preços)</h2>
+      <p class="import-totals" style="margin-bottom:10px">Estes modelos formam a tabela de preços de cada cliente — aparecem <strong>mesmo com o estoque zerado</strong>. Cole a lista de modelos (uma por linha, começando com <code>--</code>, igual à lista de estoque) e salve. A lista de estoque do dia só preenche as quantidades.</p>
+      <div class="import-box">
+        <textarea id="modelsText" rows="6" placeholder="-- V55&#10;-- NIK 10K&#10;-- V80"></textarea>
+        <div id="modelsChips" class="chips-row" style="margin:6px 0 10px"></div>
+        <button class="btn-primary" id="saveModelsBtn">Salvar modelos</button>
+      </div>
+
+      <h2>Cadastros aguardando aprovação</h2>
+      <p class="import-totals" style="margin-bottom:10px">Preencha o preço de cada modelo para este cliente antes de aprovar. Modelos sem preço aparecem como "valor a combinar" na loja.</p>
+      <div id="pendingUsers"></div>
+      <p id="emptyPendingUsers" class="empty hidden">Nenhum cadastro pendente.</p>
+
+      <h2>Clientes aprovados</h2>
+      <div id="approvedUsers"></div>
+      <p id="emptyApprovedUsers" class="empty hidden">Nenhum cliente aprovado ainda.</p>
+    </section>
+
+    <section id="tab-leads" class="hidden">
+      <h2>Criar cliente</h2>
+      <p class="import-totals" style="margin-bottom:10px">Crie a conta do cliente você mesmo — ele já entra aprovado. Depois é só definir os preços na aba <strong>Clientes</strong>.</p>
+      <div class="import-box">
+        <div class="new-product">
+          <div><label for="leadName">Nome</label><input type="text" id="leadName" placeholder="Ex: Carlos da Distribuidora" /></div>
+          <div><label for="leadPhone">WhatsApp (país + DDD + número)</label><input type="text" id="leadPhone" inputmode="numeric" placeholder="5541999887766" /></div>
+          <div><label for="leadUser">Usuário</label><input type="text" id="leadUser" placeholder="carlos10" autocomplete="off" /></div>
+          <div><label for="leadPass">Senha</label><input type="text" id="leadPass" placeholder="mínimo 4 caracteres" autocomplete="off" /></div>
+          <button class="btn-primary" id="createLeadBtn" style="grid-column:1/-1">Criar cliente</button>
+        </div>
+      </div>
+
+      <h2>Contas (usuário e senha)</h2>
+      <input type="text" id="leadSearch" placeholder="Buscar por nome ou usuário..." style="margin-bottom:10px" />
+      <div id="leadsList"></div>
+      <p id="emptyLeads" class="empty hidden">Nenhum cliente ainda.</p>
+    </section>
+
+    <section id="tab-estoque" class="hidden">
+      <h2>Importar lista de estoque</h2>
+      <div class="import-box">
+        <textarea id="importText" rows="8" placeholder="Cole aqui a lista de estoque, no formato:&#10;&#10;-- V55&#10;&#10;80 pineaple&#10;40 melon mix&#10;..."></textarea>
+        <button class="btn-primary" id="parseListBtn">Ler lista e conferir</button>
+      </div>
+      <div id="importPreview" class="hidden"></div>
+
+      <h2>Novo produto</h2>
+      <div class="new-product">
+        <div>
+          <label for="npName">Nome</label>
+          <input type="text" id="npName" placeholder="Ex: Elf Bar BC10000 – Manga Ice" />
+        </div>
+        <div>
+          <label for="npStock">Estoque</label>
+          <input type="number" id="npStock" min="0" step="1" placeholder="50" />
+        </div>
+        <button class="btn-primary" id="addProductBtn">Adicionar</button>
+        <div style="grid-column:1/-1">
+          <label for="npLogo">Logo da marca (opcional — aparece em todos os produtos dessa marca na loja)</label>
+          <input type="file" id="npLogo" accept="image/png,image/jpeg,image/webp" />
+        </div>
+      </div>
+
+      <h2>Produtos</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <input type="text" id="prodSearch" placeholder="Buscar produto..." style="flex:1;min-width:180px;margin:0" />
+        <button class="btn-small" id="copyListBtn">📋 Copiar lista</button>
+      </div>
+      <div id="prodCategories" class="chips-row" style="margin-bottom:10px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Produto</th><th>Estoque</th><th>Ativo</th><th></th></tr>
+          </thead>
+          <tbody id="productRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-contabilidade" class="hidden">
+      <details class="collapse">
+        <summary>Configurações <span class="collapse-hint">Pushcut e custo por peça</span></summary>
+        <div class="import-box" style="margin-top:6px">
+          <label for="notifyUrlInput">🔔 Link de notificação (Pushcut) — avisa seu celular a cada pedido/cadastro</label>
+          <input type="text" id="notifyUrlInput" placeholder="https://api.pushcut.io/SEU_TOKEN/notifications/NOME" />
+          <div class="total-row" style="padding:12px 0 4px"><span>💰 Meu custo por peça (por modelo)</span><span class="muted" style="font-size:.82rem">o lucro sai sozinho</span></div>
+          <p class="muted" style="font-size:.82rem;margin-bottom:8px">Preencha o seu custo de cada modelo. Com isso, o lucro de cada pedido é calculado automaticamente (faturamento pelo preço do cliente − este custo), sem digitar em cada pedido.</p>
+          <div id="costsGrid" class="prices-grid"></div>
+          <button class="btn-primary" id="saveSettingsBtn" style="margin-top:12px">Salvar configurações</button>
+        </div>
+      </details>
+
+      <details class="collapse" open>
+        <summary>Resumo <span class="collapse-hint">vendas e lucro do período</span></summary>
+      <div class="chips-row" id="accPeriods" style="margin:10px 0">
+        <button class="chip" data-period="hoje">Hoje</button>
+        <button class="chip" data-period="7dias">Últimos 7 dias</button>
+        <button class="chip" data-period="mes">Este mês</button>
+        <button class="chip" data-period="max">Máximo</button>
+        <button class="chip" data-period="custom">Personalizado</button>
+      </div>
+      <div id="accCustom" class="hidden" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px">
+        <div><label for="accFrom">De</label><input type="date" id="accFrom" /></div>
+        <div><label for="accTo">Até</label><input type="date" id="accTo" /></div>
+        <button class="btn-small" id="accApply">Aplicar</button>
+      </div>
+      <div class="stats-grid" id="statsGrid"></div>
+      </details>
+
+      <h2>Planilha de vendas (pedidos aceitos)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Peças</th>
+              <th>Faturamento (R$)</th>
+              <th>Custo (R$)</th>
+              <th>Lucro</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="ledgerRows"></tbody>
+        </table>
+      </div>
+      <p id="emptyLedger" class="empty hidden">Nenhum pedido aceito ainda.</p>
+    </section>
+  </main>
+
+  <div id="orderModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal">
+      <div id="orderModalBody"></div>
+      <button class="btn-small" id="orderModalClose" style="width:100%;margin-top:14px">Fechar</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="parser.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
