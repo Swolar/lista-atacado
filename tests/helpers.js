@@ -45,8 +45,6 @@ function pool() {
   return sharedPool;
 }
 
-// base de porta por processo para não colidir entre arquivos de teste paralelos
-let nextPort = 3900 + (process.pid % 500);
 let schemaSeq = 0;
 
 async function waitReady(base, isDead = () => false, timeoutMs = 30000) {
@@ -62,55 +60,81 @@ async function waitReady(base, isDead = () => false, timeoutMs = 30000) {
   throw new Error('servidor não subiu em ' + timeoutMs + 'ms: ' + base);
 }
 
+// O servidor sobe com PORT=0 (o SO escolhe uma porta livre) e a porta real é lida do
+// stdout — elimina colisão de portas quando vários arquivos de teste rodam em paralelo
+// (era possível dois testes conversarem com o servidor um do outro).
+function waitPort(getStdout, isDead, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const m = getStdout().match(/Loja:\s+http:\/\/localhost:(\d+)/);
+      if (m) {
+        clearInterval(timer);
+        return resolve(Number(m[1]));
+      }
+      if (isDead()) {
+        clearInterval(timer);
+        return reject(new Error('o processo do servidor saiu antes de anunciar a porta'));
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        return reject(new Error('servidor não anunciou a porta em ' + timeoutMs + 'ms'));
+      }
+    }, 40);
+  });
+}
+
 async function startServer(seed, extraEnv = {}) {
   const schema = `podtest_${process.pid}_${schemaSeq++}_${Math.floor(Math.random() * 1e6)}`;
   await ensureSchema(pool(), schema);
   await importData(pool(), schema, seed);
 
-  // Sobe o servidor com até 2 tentativas (porta em uso / máquina sob carga).
+  // Sobe o servidor com até 2 tentativas (máquina sob carga).
   let lastErr;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const port = nextPort++;
     const child = spawn('node', [SERVER], {
       cwd: PROJECT,
       env: {
         ...process.env,
-        PORT: String(port),
+        PORT: '0', // porta livre escolhida pelo SO — sem colisão entre arquivos paralelos
         ADMIN_PASSWORD, // senha do sócio 1 (krauz)
         P2_PASSWORD: PARTNER_CRED.boss.password, // senha do sócio 2 (boss)
         P1_NOTIFY: '', // sem disparar Pushcut real nos testes
         P2_NOTIFY: '',
         DATABASE_URL: DB_URL,
         PGSCHEMA: schema,
+        PGPOOL_MAX: '2', // menos conexões por servidor de teste — não satura o pooler do Supabase
         ...extraEnv,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    let stdout = '';
     let stderr = '';
     let exited = false;
+    child.stdout.on('data', (d) => (stdout += d));
     child.stderr.on('data', (d) => (stderr += d));
     child.on('exit', () => (exited = true));
-    const base = `http://localhost:${port}`;
     try {
+      const port = await waitPort(() => stdout, () => exited);
+      const base = `http://localhost:${port}`;
       await waitReady(base, () => exited);
+      return {
+        base,
+        schema,
+        stderr: () => stderr,
+        stop() {
+          child.kill('SIGKILL');
+          // derruba o schema em segundo plano; sobras são varridas por
+          // scripts/clean-test-schemas.js no início da próxima rodada
+          pool()
+            .query(`drop schema if exists "${schema}" cascade`)
+            .catch(() => {});
+        },
+      };
     } catch (e) {
       child.kill('SIGKILL');
       lastErr = new Error(e.message + '\n--- stderr ---\n' + stderr);
-      continue; // tenta a próxima porta
     }
-    return {
-      base,
-      schema,
-      stderr: () => stderr,
-      stop() {
-        child.kill('SIGKILL');
-        // derruba o schema em segundo plano; sobras são varridas por
-        // scripts/clean-test-schemas.js no início da próxima rodada
-        pool()
-          .query(`drop schema if exists "${schema}" cascade`)
-          .catch(() => {});
-      },
-    };
   }
   pool()
     .query(`drop schema if exists "${schema}" cascade`)

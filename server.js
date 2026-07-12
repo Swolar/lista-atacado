@@ -7,7 +7,14 @@ const fs = require('fs');
 const path = require('path');
 const { handleRequest, PARTNERS, logConfigWarnings, ensureReady } = require('./lib/app');
 
-const PORT = Number(process.env.PORT) || 3000;
+// PORT=0 é válido (o SO escolhe uma porta livre — usado nos testes); só cai no 3000
+// quando a variável não existe ou não é um número
+const PORT = (() => {
+  const raw = process.env.PORT;
+  if (raw === undefined || raw === '') return 3000;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : 3000;
+})();
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ---------- arquivos estáticos ----------
@@ -66,10 +73,12 @@ const server = http.createServer(async (req, res) => {
 ensureReady()
   .then(() => {
     server.listen(PORT, () => {
-      console.log(`Loja:         http://localhost:${PORT}`);
-      console.log(`Painel admin: http://localhost:${PORT}/admin`);
+      // com PORT=0 o sistema escolhe uma porta livre (usado nos testes) — loga a real
+      const port = server.address().port;
+      console.log(`Loja:         http://localhost:${port}`);
+      console.log(`Painel admin: http://localhost:${port}/admin`);
       for (const pt of PARTNERS) {
-        console.log(`  Sócio "${pt.name}" — usuário do painel: ${pt.login} — link de cadastro: http://localhost:${PORT}/login/${pt.slug}`);
+        console.log(`  Sócio "${pt.name}" — usuário do painel: ${pt.login} — link de cadastro: http://localhost:${port}/login/${pt.slug}`);
       }
       logConfigWarnings();
     });

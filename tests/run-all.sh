@@ -17,6 +17,11 @@ node --test tests/api.test.js
 api_status=$?
 
 echo ""
+echo "=== Cenários extremos/hostis (node:test) ==="
+node --test tests/scenarios.test.js
+scen_status=$?
+
+echo ""
 echo "=== Teste de XSS (Playwright) ==="
 node tests/xss.playwright.js
 xss_status=$?
@@ -27,10 +32,10 @@ node tests/ui.playwright.js
 ui_status=$?
 
 echo ""
-if [ $parser_status -eq 0 ] && [ $api_status -eq 0 ] && [ $xss_status -eq 0 ] && [ $ui_status -eq 0 ]; then
+if [ $parser_status -eq 0 ] && [ $api_status -eq 0 ] && [ $scen_status -eq 0 ] && [ $xss_status -eq 0 ] && [ $ui_status -eq 0 ]; then
   echo "✔ SUÍTE COMPLETA VERDE"
   exit 0
 else
-  echo "✖ FALHAS: parser=$parser_status api=$api_status xss=$xss_status ui=$ui_status"
+  echo "✖ FALHAS: parser=$parser_status api=$api_status cenarios=$scen_status xss=$xss_status ui=$ui_status"
   exit 1
 fi
