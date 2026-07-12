@@ -91,10 +91,21 @@ async function getJson(pathname, token) {
   }
   console.log(`  compartilhado: ${products.length} produto(s), ${models.length} modelo(s)`);
 
-  // 3. logos customizadas (img/brands/<slug>.<ext>) — só as que existirem no site antigo
+  // 3. logos customizadas (img/brands/<slug>.<ext>) — só as que existirem no site antigo.
+  // Mesma regra de marca do servidor (marcas compostas e IGNITE por regex) — senão a logo
+  // de "LOST MARY ..." seria procurada como "LOST" e se perderia.
   const brandLogos = {};
   const modelOf = (n) => (n.indexOf(' – ') > 0 ? n.slice(0, n.indexOf(' – ')) : n);
-  const brands = [...new Set(products.map((x) => modelOf(x.name).split(' ')[0]))];
+  const MULTIWORD = ['LOST MARY', 'BLACK SHEEP', 'ELF BAR', 'GEEK BAR', 'AIR BAR', 'PUFF BAR', 'LOST VAPE', 'MR FOG', 'BANG KING', 'HYPPE MAX'];
+  const brandOf = (name) => {
+    const header = modelOf(name);
+    if (!header) return 'OUTROS';
+    if (/^V(\d|MIX|NANO)/i.test(header)) return 'IGNITE';
+    for (const b of MULTIWORD) if (header.startsWith(b + ' ') || header === b) return b;
+    const ix = header.indexOf(' ');
+    return ix < 0 ? header : header.slice(0, ix);
+  };
+  const brands = [...new Set(products.map((x) => brandOf(x.name)))];
   for (const brand of brands) {
     const slug = brand.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     for (const ext of ['png', 'jpg', 'webp']) {

@@ -30,7 +30,7 @@ function json(res, status, obj) {
   res.end(body);
 }
 
-function serveStatic(res, pathname) {
+function serveStatic(res, pathname, headOnly = false) {
   if (pathname === '/') pathname = '/index.html';
   if (pathname === '/admin') pathname = '/admin.html';
   // link de cadastro por sócio: /login/<slug> serve a própria loja (a loja lê o slug da URL)
@@ -41,8 +41,11 @@ function serveStatic(res, pathname) {
   }
   fs.readFile(file, (err, data) => {
     if (err) return json(res, 404, { error: 'Página não encontrada.' });
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
-    res.end(data);
+    res.writeHead(200, {
+      'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
+      'Content-Length': data.length,
+    });
+    res.end(headOnly ? undefined : data);
   });
 }
 
@@ -52,8 +55,9 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if (url.pathname.startsWith('/api/')) {
     await handleRequest(req, res, url);
-  } else if (req.method === 'GET') {
-    serveStatic(res, url.pathname);
+  } else if (req.method === 'GET' || req.method === 'HEAD') {
+    // HEAD atendido igual ao GET (sem corpo) — monitores de uptime usam HEAD
+    serveStatic(res, url.pathname, req.method === 'HEAD');
   } else {
     json(res, 405, { error: 'Método não permitido.' });
   }

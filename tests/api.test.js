@@ -633,3 +633,90 @@ test('migração: partnerId de sócio desconhecido é reatribuído ao sócio 1 (
     s.stop();
   }
 });
+
+// ---------- comportamentos novos da migração Vercel/Supabase ----------
+
+test('polling /api/events devolve {v} e a versão muda após mutação', async () => {
+  const s = await startServer(baseSeed());
+  try {
+    const token = await adminLogin(s.base);
+    const r1 = await req(s.base, 'GET', '/api/events', { token });
+    assert.strictEqual(r1.status, 200);
+    assert.ok(Number.isFinite(r1.json.v), 'formato {v: número}, veio: ' + JSON.stringify(r1.json));
+    await req(s.base, 'POST', '/api/admin/products', { token, body: { name: 'NOVO – Sabor', stock: 1 } });
+    const r2 = await req(s.base, 'GET', '/api/events', { token });
+    assert.ok(r2.json.v > r1.json.v, 'versão aumenta após mutação');
+  } finally {
+    s.stop();
+  }
+});
+
+test('logo de marca: upload → GET /api/brand-img e a lista aponta para ela', async () => {
+  const s = await startServer(baseSeed());
+  try {
+    const token = await adminLogin(s.base);
+    const png1x1 =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const up = await req(s.base, 'POST', '/api/admin/brand-logo', {
+      token,
+      body: { productName: 'V55 – Menta', dataUrl: png1x1 },
+    });
+    assert.strictEqual(up.status, 200, JSON.stringify(up.json));
+    assert.strictEqual(up.json.brand, 'IGNITE');
+    const img = await fetch(s.base + '/' + up.json.logo);
+    assert.strictEqual(img.status, 200);
+    assert.strictEqual(img.headers.get('content-type'), 'image/png');
+    const { utoken } = await createApprovedUser(s.base, {});
+    const list = (await req(s.base, 'GET', '/api/products', { utoken })).json;
+    assert.strictEqual(list.find((p) => p.id === 'p1').logo, 'api/brand-img/IGNITE', 'lista usa a logo do banco');
+  } finally {
+    s.stop();
+  }
+});
+
+test('import com o mesmo produto repetido na lista: add acumula, replace último vence, novo nasce somado', async () => {
+  const s = await startServer(baseSeed());
+  try {
+    const token = await adminLogin(s.base);
+    // add: 40 + 3 + 4 = 47 (nomes que normalizam para o mesmo produto)
+    await req(s.base, 'POST', '/api/admin/products/import', {
+      token,
+      body: { mode: 'add', items: [{ name: 'V55 – Menta', stock: 3 }, { name: 'V55 – MENTA', stock: 4 }] },
+    });
+    let products = (await req(s.base, 'GET', '/api/admin/products', { token })).json;
+    assert.strictEqual(prod(products, 'p1').stock, 47, 'duplicado em add acumula');
+    // replace: último vence → 5
+    await req(s.base, 'POST', '/api/admin/products/import', {
+      token,
+      body: { mode: 'replace', items: [{ name: 'V55 – Menta', stock: 30 }, { name: 'V55 – MENTA', stock: 5 }] },
+    });
+    products = (await req(s.base, 'GET', '/api/admin/products', { token })).json;
+    assert.strictEqual(prod(products, 'p1').stock, 5, 'duplicado em replace: último vence');
+    // produto NOVO duplicado na mesma lista — nasce com a soma
+    await req(s.base, 'POST', '/api/admin/products/import', {
+      token,
+      body: { mode: 'add', items: [{ name: 'ELF BAR BC10000 – Uva', stock: 5 }, { name: 'ELF BAR BC10000 – UVA', stock: 3 }] },
+    });
+    products = (await req(s.base, 'GET', '/api/admin/products', { token })).json;
+    const novo = products.find((p) => p.name === 'ELF BAR BC10000 – Uva');
+    assert.ok(novo, 'produto novo criado uma única vez');
+    assert.strictEqual(novo.stock, 8, 'novo duplicado nasce com a soma');
+    assert.strictEqual(products.filter((p) => /ELF BAR BC10000/i.test(p.name)).length, 1, 'sem duplicata');
+  } finally {
+    s.stop();
+  }
+});
+
+test('sessão de cliente expirada é rejeitada', async () => {
+  const s = await startServer(baseSeed());
+  try {
+    const { utoken } = await createApprovedUser(s.base, {});
+    assert.strictEqual((await req(s.base, 'GET', '/api/me', { utoken })).status, 200);
+    // viagem no tempo: expira a sessão direto no banco de teste
+    const { dbPool } = require('./helpers');
+    await dbPool().query(`update "${s.schema}".sessions set expires_at = now() - interval '1 minute'`);
+    assert.strictEqual((await req(s.base, 'GET', '/api/me', { utoken })).status, 401, 'sessão expirada → 401');
+  } finally {
+    s.stop();
+  }
+});

@@ -7,3 +7,4 @@ data.json
 data.json.bak-*
 data.json.corrupt-*
 .DS_Store
+.env*

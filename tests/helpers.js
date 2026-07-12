@@ -204,4 +204,5 @@ module.exports = {
   createApprovedUser,
   snapshotStock,
   assertConservation,
+  dbPool: pool, // acesso direto ao banco de teste (ex: forçar expiração de sessão)
 };

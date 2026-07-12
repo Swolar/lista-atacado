@@ -75,9 +75,11 @@ create table if not exists ${S}.sessions (
   token text primary key,
   kind text not null,
   subject text not null,
+  fingerprint text not null default '',
   created_at timestamptz not null default now(),
   expires_at timestamptz not null
 );
+alter table ${S}.sessions add column if not exists fingerprint text not null default '';
 create index if not exists sessions_subject_idx on ${S}.sessions (kind, subject);
 
 create table if not exists ${S}.throttle (
