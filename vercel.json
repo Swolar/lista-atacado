@@ -4,5 +4,6 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/login/:slug", "destination": "/index.html" }
-  ]
+  ],
+  "crons": [{ "path": "/api/health", "schedule": "0 6 * * *" }]
 }

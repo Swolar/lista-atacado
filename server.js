@@ -70,7 +70,12 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// Banco fora do ar NÃO derruba o site: os estáticos continuam servindo e a API
+// tenta reconectar a cada request (o ensureReady do lib/app.js se rearma sozinho).
 ensureReady()
+  .catch((err) => {
+    console.error(`AVISO: banco indisponível no boot (${err.message}) — servindo o site assim mesmo; a API reconecta sozinha.`);
+  })
   .then(() => {
     server.listen(PORT, () => {
       // com PORT=0 o sistema escolhe uma porta livre (usado nos testes) — loga a real
@@ -82,8 +87,4 @@ ensureReady()
       }
       logConfigWarnings();
     });
-  })
-  .catch((err) => {
-    console.error('ERRO ao preparar o banco (DATABASE_URL ok?):', err.message);
-    process.exit(1);
   });
