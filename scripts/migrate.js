@@ -61,8 +61,12 @@ create table if not exists ${S}.models (
 create table if not exists ${S}.partner_data (
   slug text primary key,
   notify_url text not null default '',
-  costs jsonb not null default '{}'::jsonb
+  costs jsonb not null default '{}'::jsonb,
+  pass_salt text not null default '',
+  pass_hash text not null default ''
 );
+alter table ${S}.partner_data add column if not exists pass_salt text not null default '';
+alter table ${S}.partner_data add column if not exists pass_hash text not null default '';
 
 create table if not exists ${S}.brand_logos (
   brand text primary key,

@@ -10,7 +10,7 @@ O sistema atende **2 sócios** que dividem a **mesma lista/estoque de pods**, ma
 - **Estoque é único e compartilhado** — os dois veem e baixam do mesmo número. Um pedido de
   qualquer sócio desconta do mesmo estoque.
 - **Cada sócio tem seu link de cadastro:** `SEU_DOMINIO/login/krauz` (sócio 1) e
-  `SEU_DOMINIO/login/boss` (sócio 2). Quem se cadastra por um link **vira cliente daquele
+  `SEU_DOMINIO/login/bross` (sócio 2). Quem se cadastra por um link **vira cliente daquele
   sócio** e só aparece no painel dele. No domínio pelado (`/`) só dá pra **logar** — criar
   conta exige o link do vendedor.
 - **Painel por sócio:** cada sócio entra em `/admin` com o **seu próprio usuário e senha** e
@@ -82,23 +82,42 @@ Settings → Environment Variables):
 | `P1_PASSWORD` | Senha do painel do sócio 1. Aceita também `ADMIN_PASSWORD`. | `Krauz#` |
 | `P1_NOTIFY` | URL de notificação (Pushcut) do sócio 1 | Pushcut embutido |
 | `P1_NAME` | Nome exibido do sócio 1 | `Krauz` |
-| `P2_USER` | Usuário do painel do **sócio 2** | `boss` |
-| `P2_PASSWORD` | Senha do painel do sócio 2 | `Boss#` |
+| `P2_USER` | Usuário do painel do **sócio 2** | `bross` |
+| `P2_PASSWORD` | Senha do painel do sócio 2 | `Bross#` |
 | `P2_NOTIFY` | URL de notificação (Pushcut) do sócio 2 | Pushcut embutido |
-| `P2_NAME` | Nome exibido do sócio 2 | `Boss` |
+| `P2_NAME` | Nome exibido do sócio 2 | `Bross` |
 | `DATABASE_URL` | String de conexão do Postgres (Supabase, pooler porta 6543) | — |
 | `PORT` | Porta do servidor local | `3000` |
 
 ```bash
 P1_USER=krauz P1_PASSWORD=senhaForte1 P1_NOTIFY="https://api.pushcut.io/TOKEN1/notifications/Pedido%20Gerado" \
-P2_USER=boss  P2_PASSWORD=senhaForte2 P2_NOTIFY="https://api.pushcut.io/TOKEN2/notifications/Pedido%20Gerado" \
+P2_USER=bross P2_PASSWORD=senhaForte2 P2_NOTIFY="https://api.pushcut.io/TOKEN2/notifications/Pedido%20Gerado" \
 node server.js
 ```
 
-> **Importante:** o painel controla estoque, preços e clientes — **sempre** defina
-> `P1_PASSWORD` e `P2_PASSWORD` fortes em produção. Sem isso, são usadas senhas padrão
-> embutidas (`Krauz#` / `Boss#`), que **não devem** ir para produção. Ao iniciar, o servidor
-> imprime os links de cadastro de cada sócio e avisa se alguma senha ainda é a padrão.
+> **Importante:** o painel controla estoque, preços e clientes — cada sócio deve **criar a
+> própria senha** pelo link de primeiro acesso (veja abaixo) ou defina `P1_PASSWORD` /
+> `P2_PASSWORD` fortes. Sem nenhum dos dois, valem as senhas padrão embutidas
+> (`Krauz#` / `Bross#`), que **não devem** ir para produção. Ao iniciar, o servidor imprime
+> os links de cadastro e de criação de senha de cada sócio e avisa se alguma senha ainda é a padrão.
+
+### Senha própria do sócio (link de primeiro acesso)
+
+Cada sócio pode criar a própria senha do painel — sem depender de variável de ambiente:
+
+```bash
+node scripts/print-setup-links.js            # imprime os links de produção
+node scripts/print-setup-links.js http://localhost:3000   # ou para o servidor local
+```
+
+- O link tem a forma `SEU_DOMINIO/senha/<slug>/<token>`; o token é derivado por HMAC da
+  `DATABASE_URL` (nada precisa ser provisionado no banco).
+- Na página o sócio digita a senha 2× e pronto: ela é gravada com hash scrypt em
+  `partner_data` e **passa a valer no lugar** da senha de ambiente. Sessões antigas caem.
+- O link **só funciona enquanto o sócio não tem senha própria** — depois disso ele "morre"
+  sozinho. Se o sócio esquecer a senha, zere `pass_hash` na tabela `partner_data`
+  (`update partner_data set pass_hash = '', pass_salt = '' where slug = '...'`) e mande o
+  link de novo.
 
 O login do admin, o login do cliente e o cadastro têm **trava anti-força-bruta e
 anti-flood por IP** (5 tentativas de senha erradas → bloqueio de 1 min; até 8 cadastros

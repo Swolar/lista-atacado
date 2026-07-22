@@ -5,7 +5,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { handleRequest, PARTNERS, logConfigWarnings, ensureReady } = require('./lib/app');
+const { handleRequest, PARTNERS, logConfigWarnings, ensureReady, setupToken } = require('./lib/app');
 
 // PORT=0 é válido (o SO escolhe uma porta livre — usado nos testes); só cai no 3000
 // quando a variável não existe ou não é um número
@@ -42,6 +42,8 @@ function serveStatic(res, pathname, headOnly = false) {
   if (pathname === '/admin') pathname = '/admin.html';
   // link de cadastro por sócio: /login/<slug> serve a própria loja (a loja lê o slug da URL)
   if (pathname.startsWith('/login/')) pathname = '/index.html';
+  // primeiro acesso do sócio: /senha/<slug>/<token> (a página lê os dados da URL)
+  if (pathname.startsWith('/senha/')) pathname = '/definir-senha.html';
   const file = path.normalize(path.join(PUBLIC_DIR, pathname));
   if (!file.startsWith(PUBLIC_DIR)) {
     return json(res, 403, { error: 'Proibido.' });
@@ -84,6 +86,7 @@ ensureReady()
       console.log(`Painel admin: http://localhost:${port}/admin`);
       for (const pt of PARTNERS) {
         console.log(`  Sócio "${pt.name}" — usuário do painel: ${pt.login} — link de cadastro: http://localhost:${port}/login/${pt.slug}`);
+        console.log(`    criar senha (1º acesso): http://localhost:${port}/senha/${pt.slug}/${setupToken(pt.slug)}`);
       }
       logConfigWarnings();
     });

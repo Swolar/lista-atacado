@@ -467,27 +467,27 @@ test('isolamento entre sócios: cada painel só vê e só mexe nos seus dados', 
   const s = await startServer(baseSeed());
   try {
     const A = await createApprovedUser(s.base, { partner: 'krauz', prices: { V55: 5000 } });
-    const B = await createApprovedUser(s.base, { partner: 'boss', prices: { V55: 6000 } });
+    const B = await createApprovedUser(s.base, { partner: 'bross', prices: { V55: 6000 } });
     const oa = await req(s.base, 'POST', '/api/orders', { utoken: A.utoken, body: { customer: { address: 'r' }, items: [{ productId: 'p1', qty: 2 }] } });
     const ob = await req(s.base, 'POST', '/api/orders', { utoken: B.utoken, body: { customer: { address: 'r' }, items: [{ productId: 'p1', qty: 3 }] } });
 
     // krauz vê só o seu cliente/pedido
     const usersK = (await req(s.base, 'GET', '/api/admin/users', { token: A.adminToken })).json;
-    assert.ok(usersK.some((u) => u.id === A.id) && usersK.every((u) => u.id !== B.id), 'krauz não vê cliente do boss');
+    assert.ok(usersK.some((u) => u.id === A.id) && usersK.every((u) => u.id !== B.id), 'krauz não vê cliente do bross');
     const ordersK = (await req(s.base, 'GET', '/api/admin/orders', { token: A.adminToken })).json;
-    assert.ok(ordersK.some((o) => o.id === oa.json.id) && ordersK.every((o) => o.id !== ob.json.id), 'krauz não vê pedido do boss');
+    assert.ok(ordersK.some((o) => o.id === oa.json.id) && ordersK.every((o) => o.id !== ob.json.id), 'krauz não vê pedido do bross');
 
-    // krauz NÃO mexe no cliente/pedido do boss → 404
+    // krauz NÃO mexe no cliente/pedido do bross → 404
     assert.strictEqual((await req(s.base, 'PUT', `/api/admin/users/${B.id}`, { token: A.adminToken, body: { prices: { V55: 1 } } })).status, 404);
     assert.strictEqual((await req(s.base, 'DELETE', `/api/admin/users/${B.id}`, { token: A.adminToken })).status, 404);
     assert.strictEqual((await req(s.base, 'POST', `/api/admin/orders/${ob.json.id}/accept`, { token: A.adminToken })).status, 404);
     assert.strictEqual((await req(s.base, 'POST', `/api/admin/orders/${ob.json.id}/reject`, { token: A.adminToken })).status, 404);
     assert.strictEqual((await req(s.base, 'PUT', `/api/admin/orders/${ob.json.id}/items`, { token: A.adminToken, body: { items: [{ productId: 'p1', qty: 1 }] } })).status, 404);
 
-    // boss mexe no SEU normalmente
+    // bross mexe no SEU normalmente
     assert.strictEqual((await req(s.base, 'POST', `/api/admin/orders/${ob.json.id}/accept`, { token: B.adminToken })).status, 200);
     assert.strictEqual((await req(s.base, 'POST', `/api/admin/orders/${ob.json.id}/finance`, { token: B.adminToken, body: { revenueCents: 100, costCents: 50 } })).status, 200);
-    // boss NÃO lança finance no pedido do krauz → 404
+    // bross NÃO lança finance no pedido do krauz → 404
     assert.strictEqual((await req(s.base, 'POST', `/api/admin/orders/${oa.json.id}/finance`, { token: B.adminToken, body: { revenueCents: 1, costCents: 1 } })).status, 404);
   } finally {
     s.stop();
@@ -498,7 +498,7 @@ test('estoque é único: pedidos dos dois sócios baixam do mesmo estoque', asyn
   const s = await startServer(baseSeed());
   try {
     const A = await createApprovedUser(s.base, { partner: 'krauz' });
-    const B = await createApprovedUser(s.base, { partner: 'boss' });
+    const B = await createApprovedUser(s.base, { partner: 'bross' });
     // p1 = 40; A pede 10, B pede 5 → disponível 25 para AMBOS
     await req(s.base, 'POST', '/api/orders', { utoken: A.utoken, body: { customer: { address: 'r' }, items: [{ productId: 'p1', qty: 10 }] } });
     await req(s.base, 'POST', '/api/orders', { utoken: B.utoken, body: { customer: { address: 'r' }, items: [{ productId: 'p1', qty: 5 }] } });
@@ -506,12 +506,12 @@ test('estoque é único: pedidos dos dois sócios baixam do mesmo estoque', asyn
     const seenByB = (await req(s.base, 'GET', '/api/products', { utoken: B.utoken })).json.find((p) => p.id === 'p1').stock;
     assert.strictEqual(seenByA, 25);
     assert.strictEqual(seenByB, 25, 'os dois veem o MESMO estoque');
-    // recusar o pedido do boss devolve ao estoque compartilhado
-    const btoken = await adminLogin(s.base, 'boss');
+    // recusar o pedido do bross devolve ao estoque compartilhado
+    const btoken = await adminLogin(s.base, 'bross');
     const orders = (await req(s.base, 'GET', '/api/admin/orders', { token: btoken })).json;
     await req(s.base, 'POST', `/api/admin/orders/${orders[0].id}/reject`, { token: btoken });
     const afterReject = (await req(s.base, 'GET', '/api/products', { utoken: A.utoken })).json.find((p) => p.id === 'p1').stock;
-    assert.strictEqual(afterReject, 30, 'recusa do boss devolveu ao estoque que o krauz também vê');
+    assert.strictEqual(afterReject, 30, 'recusa do bross devolveu ao estoque que o krauz também vê');
   } finally {
     s.stop();
   }
@@ -522,7 +522,7 @@ test('cadastro exige link de sócio válido', async () => {
   try {
     assert.strictEqual((await req(s.base, 'POST', '/api/register', { body: { name: 'x', whatsapp: '41999990000', username: 'sempart', password: '1234' } })).status, 400, 'sem partner → 400');
     assert.strictEqual((await req(s.base, 'POST', '/api/register', { body: { name: 'x', whatsapp: '41999990000', username: 'badpart', password: '1234', partner: 'naoexiste' } })).status, 400, 'partner inválido → 400');
-    assert.strictEqual((await req(s.base, 'POST', '/api/register', { body: { name: 'x', whatsapp: '41999990000', username: 'okpart', password: '1234', partner: 'boss' } })).status, 201, 'partner válido → 201');
+    assert.strictEqual((await req(s.base, 'POST', '/api/register', { body: { name: 'x', whatsapp: '41999990000', username: 'okpart', password: '1234', partner: 'bross' } })).status, 201, 'partner válido → 201');
   } finally {
     s.stop();
   }
@@ -533,7 +533,7 @@ test('GET /api/partners lista os sócios sem vazar senha/URL', async () => {
   try {
     const r = await req(s.base, 'GET', '/api/partners');
     assert.strictEqual(r.status, 200);
-    assert.ok(r.json.some((p) => p.slug === 'krauz') && r.json.some((p) => p.slug === 'boss'));
+    assert.ok(r.json.some((p) => p.slug === 'krauz') && r.json.some((p) => p.slug === 'bross'));
     assert.ok(r.json.every((p) => !('password' in p) && !('notifyUrl' in p)), 'não vaza senha nem URL');
   } finally {
     s.stop();
@@ -547,12 +547,12 @@ test('notificação vai só para o Pushcut do sócio dono', async () => {
   const port = mock.address().port;
   const s = await startServer(baseSeed(), {
     P1_NOTIFY: `http://localhost:${port}/krauz`,
-    P2_NOTIFY: `http://localhost:${port}/boss`,
+    P2_NOTIFY: `http://localhost:${port}/bross`,
   });
   try {
-    await req(s.base, 'POST', '/api/register', { body: { name: 'B', whatsapp: '41999990000', username: 'bnotif', password: '1234', partner: 'boss' } });
+    await req(s.base, 'POST', '/api/register', { body: { name: 'B', whatsapp: '41999990000', username: 'bnotif', password: '1234', partner: 'bross' } });
     await new Promise((r) => setTimeout(r, 500)); // notificação é fire-and-forget
-    assert.ok(hits.includes('/boss'), 'cadastro do boss notificou /boss');
+    assert.ok(hits.includes('/bross'), 'cadastro do bross notificou /bross');
     assert.ok(!hits.includes('/krauz'), 'não notificou o krauz');
   } finally {
     s.stop();
@@ -564,7 +564,7 @@ test('leads: admin cria cliente e edita usuário/senha (isolado por sócio)', as
   const s = await startServer(baseSeed());
   try {
     const kt = await adminLogin(s.base, 'krauz');
-    const bt = await adminLogin(s.base, 'boss');
+    const bt = await adminLogin(s.base, 'bross');
     // krauz cria um cliente já aprovado
     const create = await req(s.base, 'POST', '/api/admin/users', { token: kt, body: { name: 'Lead 1', whatsapp: '5541999990000', username: 'lead1', password: 'senha1' } });
     assert.strictEqual(create.status, 201);
@@ -574,8 +574,8 @@ test('leads: admin cria cliente e edita usuário/senha (isolado por sócio)', as
     const login = await req(s.base, 'POST', '/api/login', { body: { username: 'lead1', password: 'senha1' } });
     assert.strictEqual(login.status, 200);
     const utoken = login.json.token;
-    // boss não vê nem edita o lead do krauz
-    assert.ok(!(await req(s.base, 'GET', '/api/admin/users', { token: bt })).json.some((u) => u.id === id), 'boss não vê o lead do krauz');
+    // bross não vê nem edita o lead do krauz
+    assert.ok(!(await req(s.base, 'GET', '/api/admin/users', { token: bt })).json.some((u) => u.id === id), 'bross não vê o lead do krauz');
     assert.strictEqual((await req(s.base, 'PUT', `/api/admin/users/${id}`, { token: bt, body: { password: 'x123' } })).status, 404);
     // krauz troca o usuário → loga com o novo
     assert.strictEqual((await req(s.base, 'PUT', `/api/admin/users/${id}`, { token: kt, body: { username: 'lead1novo' } })).status, 200);
@@ -596,7 +596,7 @@ test('configurações do sócio (custos + pushcut) são isoladas por sócio', as
   const s = await startServer(baseSeed());
   try {
     const kt = await adminLogin(s.base, 'krauz');
-    const bt = await adminLogin(s.base, 'boss');
+    const bt = await adminLogin(s.base, 'bross');
     const put = await req(s.base, 'PUT', '/api/admin/settings', { token: kt, body: { notifyUrl: 'https://api.pushcut.io/x/notifications/y', costs: { V55: 3000, V80: 4000 } } });
     assert.strictEqual(put.status, 200);
     assert.strictEqual(put.json.costs.V55, 3000);
@@ -604,7 +604,7 @@ test('configurações do sócio (custos + pushcut) são isoladas por sócio', as
     assert.strictEqual(getK.notifyUrl, 'https://api.pushcut.io/x/notifications/y');
     assert.strictEqual(getK.costs.V80, 4000);
     const getB = (await req(s.base, 'GET', '/api/admin/settings', { token: bt })).json;
-    assert.deepStrictEqual(getB.costs, {}, 'boss não vê os custos do krauz');
+    assert.deepStrictEqual(getB.costs, {}, 'bross não vê os custos do krauz');
     assert.strictEqual(getB.notifyUrl, '');
     const bad = await req(s.base, 'PUT', '/api/admin/settings', { token: kt, body: { notifyUrl: 'nao-e-url' } });
     assert.strictEqual(bad.status, 400, 'link de notificação inválido → 400');
@@ -627,8 +627,8 @@ test('migração: partnerId de sócio desconhecido é reatribuído ao sócio 1 (
     const orders = (await req(s.base, 'GET', '/api/admin/orders', { token: kt })).json;
     assert.ok(users.some((u) => u.username === 'ghost'), 'cliente órfão reatribuído ao sócio 1 (não some)');
     assert.ok(orders.some((o) => o.id === 'OG'), 'pedido órfão reatribuído ao sócio 1');
-    const bt = await adminLogin(s.base, 'boss');
-    assert.ok(!(await req(s.base, 'GET', '/api/admin/users', { token: bt })).json.some((u) => u.username === 'ghost'), 'boss não vê o órfão');
+    const bt = await adminLogin(s.base, 'bross');
+    assert.ok(!(await req(s.base, 'GET', '/api/admin/users', { token: bt })).json.some((u) => u.username === 'ghost'), 'bross não vê o órfão');
   } finally {
     s.stop();
   }

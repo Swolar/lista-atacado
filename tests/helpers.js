@@ -11,10 +11,10 @@ const PROJECT = path.resolve(__dirname, '..');
 const SERVER = path.join(PROJECT, 'server.js');
 const ADMIN_PASSWORD = 'test-pw'; // senha do sócio 1 (krauz) nos testes
 // usuário + senha de cada sócio no ambiente de teste. O server usa os logins padrão
-// (krauz/boss) e lê ADMIN_PASSWORD p/ krauz e P2_PASSWORD p/ boss.
+// (krauz/bross) e lê ADMIN_PASSWORD p/ krauz e P2_PASSWORD p/ bross.
 const PARTNER_CRED = {
   krauz: { username: 'krauz', password: ADMIN_PASSWORD },
-  boss: { username: 'boss', password: 'test-pw2' },
+  bross: { username: 'bross', password: 'test-pw2' },
 };
 
 const { ensureSchema } = require('../scripts/migrate');
@@ -98,7 +98,7 @@ async function startServer(seed, extraEnv = {}) {
         ...process.env,
         PORT: '0', // porta livre escolhida pelo SO — sem colisão entre arquivos paralelos
         ADMIN_PASSWORD, // senha do sócio 1 (krauz)
-        P2_PASSWORD: PARTNER_CRED.boss.password, // senha do sócio 2 (boss)
+        P2_PASSWORD: PARTNER_CRED.bross.password, // senha do sócio 2 (bross)
         P1_NOTIFY: '', // sem disparar Pushcut real nos testes
         P2_NOTIFY: '',
         DATABASE_URL: DB_URL,

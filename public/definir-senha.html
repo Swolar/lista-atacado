@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criar senha do painel – Lista De Pods</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A8%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>💨 Lista De Pods</h1>
+  </header>
+
+  <div class="login-box" id="setupBox">
+    <h2 id="setupTitle">Criar a senha do seu painel</h2>
+    <p id="setupHello" style="margin:0 0 14px; color: var(--muted); font-size: 0.92rem"></p>
+
+    <div id="setupForm" class="hidden">
+      <label for="pass1">Nova senha</label>
+      <input type="password" id="pass1" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+      <label for="pass2">Repita a senha</label>
+      <input type="password" id="pass2" placeholder="digite de novo" autocomplete="new-password" />
+      <button class="btn-primary" id="saveBtn">Criar senha</button>
+    </div>
+
+    <div id="setupDone" class="hidden">
+      <p style="margin: 0 0 14px">✅ Senha criada com sucesso!</p>
+      <p style="margin: 0 0 14px; color: var(--muted); font-size: 0.92rem">
+        Guarde bem a sua senha. Agora é só entrar no painel com o seu usuário
+        <strong id="doneLogin"></strong> e a senha que você acabou de criar.
+      </p>
+      <a class="btn-primary" href="/admin" style="display:block; text-align:center; text-decoration:none">Ir para o painel</a>
+    </div>
+
+    <p class="login-error" id="setupError"></p>
+  </div>
+
+  <script>
+    // URL: /senha/<socio>/<token> (rewrite para esta página) ou ?s=<socio>&t=<token>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const qs = new URLSearchParams(location.search);
+      const parts = location.pathname.split('/').filter(Boolean); // ["senha", slug, token]
+      const socio = parts[0] === 'senha' && parts[1] ? decodeURIComponent(parts[1]) : qs.get('s') || '';
+      const token = parts[0] === 'senha' && parts[2] ? decodeURIComponent(parts[2]) : qs.get('t') || '';
+
+      function fail(msg) {
+        $('setupError').textContent = msg;
+      }
+
+      if (!socio || !token) {
+        fail('Link inválido. Confira se você copiou o link completo.');
+        return;
+      }
+
+      fetch('/api/admin/setup-info?socio=' + encodeURIComponent(socio) + '&token=' + encodeURIComponent(token))
+        .then(async (r) => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.error || 'Link inválido.');
+          if (data.alreadySet) {
+            $('setupTitle').textContent = 'Senha já criada';
+            fail('A senha deste painel já foi criada. Se você esqueceu a senha, fale com quem administra o sistema.');
+            return;
+          }
+          $('setupHello').textContent = 'Olá, ' + data.name + '! Crie a senha que você vai usar para entrar no painel (usuário: ' + data.login + ').';
+          $('setupForm').classList.remove('hidden');
+        })
+        .catch((e) => fail(e.message));
+
+      $('saveBtn') && ($('saveBtn').onclick = async () => {
+        $('setupError').textContent = '';
+        const p1 = $('pass1').value;
+        const p2 = $('pass2').value;
+        if (p1.length < 6) return fail('A senha precisa ter pelo menos 6 caracteres.');
+        if (p1 !== p2) return fail('As senhas não conferem. Digite igual nos dois campos.');
+        $('saveBtn').disabled = true;
+        try {
+          const r = await fetch('/api/admin/setup-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ socio, token, password: p1 }),
+          });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.error || 'Não deu certo. Tente de novo.');
+          $('doneLogin').textContent = data.login;
+          $('setupForm').classList.add('hidden');
+          $('setupDone').classList.remove('hidden');
+        } catch (e) {
+          fail(e.message);
+          $('saveBtn').disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

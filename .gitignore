@@ -8,3 +8,4 @@ data.json.bak-*
 data.json.corrupt-*
 .DS_Store
 .env*
+data.backup-*.json
